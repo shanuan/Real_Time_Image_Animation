@@ -12,6 +12,34 @@ import cv2
 import os
 import argparse
 
+import subprocess
+import os
+from PIL import Image
+
+def video2mp3(file_name):
+    """
+    将视频转为音频
+    :param file_name: 传入视频文件的路径
+    :return:
+    """
+    outfile_name = file_name.split('.')[0] + '.mp3'
+    cmd = 'ffmpeg -i ' + file_name + ' -f mp3 ' + outfile_name
+    print(cmd)
+    subprocess.call(cmd, shell=True)
+
+
+def video_add_mp3(file_name, mp3_file):
+    """
+     视频添加音频
+    :param file_name: 传入视频文件的路径
+    :param mp3_file: 传入音频文件的路径
+    :return:
+    """
+    outfile_name = file_name.split('.')[0] + '-f.mp4'
+    subprocess.call('ffmpeg -i ' + file_name
+                    + ' -i ' + mp3_file + ' -strict -2 -f mp4 '
+                    + outfile_name, shell=True)
+
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--input_image", required=True,help="Path to image to animate")
 ap.add_argument("-c", "--checkpoint", required=True,help="Path to checkpoint")
@@ -46,8 +74,17 @@ else:
     cap = cv2.VideoCapture(0)
     print("[INFO] Initializing front camera...")
 
-fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-out1 = cv2.VideoWriter('output/test.avi', fourcc, 12, (256*3 , 256), True)
+fps = cap.get(cv2.CAP_PROP_FPS)
+size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+
+
+video2mp3(file_name = video_path)
+
+
+
+fourcc = cv2.VideoWriter_fourcc('M','P','E','G')
+#out1 = cv2.VideoWriter('output/test.avi', fourcc, fps, (256*3 , 256), True)
+out1 = cv2.VideoWriter('output/test.mp4', fourcc, fps, size, True)
 
 cv2_source = cv2.cvtColor(source_image.astype('float32'),cv2.COLOR_BGR2RGB)
 with torch.no_grad() :
@@ -61,7 +98,7 @@ with torch.no_grad() :
         ret, frame = cap.read()
         frame = cv2.flip(frame,1)
         if ret == True:
-            
+
             if not video_path:
                 x = 143
                 y = 87
@@ -69,12 +106,12 @@ with torch.no_grad() :
                 h = 322 
                 frame = frame[y:y+h,x:x+w]
             frame1 = resize(frame,(256,256))[..., :3]
-            
+
             if count == 0:
                 source_image1 = frame1
                 source1 = torch.tensor(source_image1[np.newaxis].astype(np.float32)).permute(0, 3, 1, 2)
                 kp_driving_initial = kp_detector(source1)
-            
+
             frame_test = torch.tensor(frame1[np.newaxis].astype(np.float32)).permute(0, 3, 1, 2)
 
             driving_frame = frame_test
@@ -91,16 +128,20 @@ with torch.no_grad() :
             predictions.append(np.transpose(out['prediction'].data.cpu().numpy(), [0, 2, 3, 1])[0])
             im = np.transpose(out['prediction'].data.cpu().numpy(), [0, 2, 3, 1])[0]
             im = cv2.cvtColor(im,cv2.COLOR_RGB2BGR)
-            joinedFrame = np.concatenate((cv2_source,im,frame1),axis=1)
-            
-            cv2.imshow('Test',joinedFrame)
-            out1.write(img_as_ubyte(joinedFrame))
+            #joinedFrame = np.concatenate((cv2_source,im,frame1),axis=1)
+            #joinedFrame = np.concatenate((cv2_source,im,frame1),axis=1)
+
+            #cv2.imshow('Test',joinedFrame)
+            #out1.write(img_as_ubyte(joinedFrame))
+            out1.write(img_as_ubyte(im))
             count += 1
-            if cv2.waitKey(20) & 0xFF == ord('q'):
-                break
+#            if cv2.waitKey(20) & 0xFF == ord('q'):
+#                break
         else:
             break
-        
+
     cap.release()
     out1.release()
     cv2.destroyAllWindows()
+
+video_add_mp3(file_name='output/test.mp4', mp3_file=video_path.split('.')[0] + '.mp3')
