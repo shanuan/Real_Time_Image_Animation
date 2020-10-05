@@ -1,0 +1,1 @@
+python .\image_animation.py -i .\Inputs\Monalisa.png -c .\checkpoints\vox-cpk.pth.tar -v .\vi\v1.mp4

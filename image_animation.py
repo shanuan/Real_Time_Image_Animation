@@ -37,7 +37,7 @@ if not os.path.exists('output'):
 
 relative=True
 adapt_movement_scale=True
-cpu=False
+cpu=True
 
 if video_path:
     cap = cv2.VideoCapture(video_path) 
